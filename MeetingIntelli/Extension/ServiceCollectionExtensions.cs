@@ -1,6 +1,6 @@
 ﻿using MeetingIntelli.Configurations;
 using MeetingIntelli.Data;
-using MeetingIntelli.Services.Implementations;
+using MeetingIntelli.Services;
 using MeetingIntelli.Services.Interface;
 
 
