@@ -5,7 +5,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
-namespace MeetingIntelli.Services.Implementations;
+namespace MeetingIntelli.Services;
 
 public class ClaudeService : IClaudeService
 {

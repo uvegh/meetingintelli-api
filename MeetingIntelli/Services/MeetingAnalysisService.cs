@@ -3,7 +3,7 @@ using MeetingIntelli.DTO.Responses;
 using MeetingIntelli.Services.Interface;
 using System.Text.Json;
 
-namespace MeetingIntelli.Services.Implementations;
+namespace MeetingIntelli.Services;
 
 public class MeetingAnalysisService : IMeetingAnalysisService
 {
