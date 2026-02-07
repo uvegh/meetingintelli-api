@@ -27,7 +27,8 @@ public class ApiResponse<T>
         {
             Success = false,
             Message = message,
-            Errors = errors
+            Errors = errors ?? new List<string>()
+
         };
     }
 

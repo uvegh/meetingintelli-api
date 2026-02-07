@@ -7,7 +7,7 @@ public class MeetingResponse
     public DateTime MeetingDate { get; set; }
     public string Attendees { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
-    public string? SUmmary { get; set; }
+    public string? Summary { get; set; }
     public List<ActionItemResponse> ?ActionItems { get; set; }
     public DateTime CreatedAt { get; set; }
 
