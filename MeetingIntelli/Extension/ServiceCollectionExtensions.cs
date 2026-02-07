@@ -1,7 +1,5 @@
 ﻿using MeetingIntelli.Configurations;
-using MeetingIntelli.Contracts;
 using MeetingIntelli.Data;
-using MeetingIntelli.EndPointHandlers;
 using MeetingIntelli.Services;
 using MeetingIntelli.Services.Interface;
 
@@ -30,8 +28,6 @@ public static class ServiceCollectionExtensions
       
         services.AddScoped<IMeetingAnalysisService, MeetingAnalysisService>();
         services.AddScoped<IPdfService, PdfService>();
-        services.AddScoped<IMeetings, MeetingsHandler>();
-        services.AddAutoMapper(cfg => cfg.AddProfile<MapperConfig>());
 
         services.Configure<AnthropicSettings>(configurition.GetSection(AnthropicSettings.SectionName)); ;
         services.Configure<FrontEndSettings>(configurition.GetSection(FrontEndSettings.SectionName));
@@ -46,7 +42,7 @@ public static class ServiceCollectionExtensions
         {
             options.AddPolicy("AllowFrontend", policy =>
             {
-                policy.WithOrigins("http://localhost:3000","http://localhost:3001")
+                policy.WithOrigins("http://localhost:3000")
                       .AllowAnyHeader()
                       .AllowAnyMethod()
                       .AllowCredentials();
