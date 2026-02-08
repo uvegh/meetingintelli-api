@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/MeetingIntelli/appsettings.Development.json
+/MeetingIntelli/appsettings.Development.json
+/MeetingIntelli/appsettings.json
