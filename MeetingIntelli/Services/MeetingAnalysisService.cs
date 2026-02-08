@@ -1,6 +1,6 @@
 ﻿using MeetingIntelli.DTO.Common;
 using MeetingIntelli.DTO.Responses;
-using MeetingIntelli.Services.Interface;
+using MeetingIntelli.Interface;
 using System.Text.Json;
 
 namespace MeetingIntelli.Services;

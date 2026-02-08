@@ -1,4 +1,4 @@
-﻿namespace MeetingIntelli.Services.Interface;
+﻿namespace MeetingIntelli.Interface;
 
 public interface IClaudeService
 {

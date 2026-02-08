@@ -1,7 +1,9 @@
 ﻿using MeetingIntelli.Configurations;
+using MeetingIntelli.Contracts;
 using MeetingIntelli.Data;
+using MeetingIntelli.EndPointHandlers;
+using MeetingIntelli.Interface;
 using MeetingIntelli.Services;
-using MeetingIntelli.Services.Interface;
 
 
 
@@ -21,8 +23,10 @@ public static class ServiceCollectionExtensions
                 
                )
            ));
+        services.AddScoped<IMeetings, MeetingsHandler>();
+        services.AddAutoMapper(cfg => cfg.AddProfile<MapperConfig>());
 
-       
+
         services.AddHttpClient<IClaudeService, ClaudeService>();
 
       

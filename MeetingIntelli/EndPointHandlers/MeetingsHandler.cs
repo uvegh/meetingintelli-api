@@ -2,6 +2,7 @@
 using MeetingIntelli.Contracts;
 using MeetingIntelli.DTO.Requests;
 using MeetingIntelli.DTO.Responses;
+using MeetingIntelli.Interface;
 
 namespace MeetingIntelli.EndPointHandlers;
 

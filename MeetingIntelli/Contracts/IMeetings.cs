@@ -1,4 +1,5 @@
 ﻿using MeetingIntelli.DTO.Requests;
+using MeetingIntelli.Interface;
 
 namespace MeetingIntelli.Contracts;
 

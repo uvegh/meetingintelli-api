@@ -1,5 +1,5 @@
 ﻿using MeetingIntelli.Configurations;
-using MeetingIntelli.Services.Interface;
+using MeetingIntelli.Interface;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 using System.Text;

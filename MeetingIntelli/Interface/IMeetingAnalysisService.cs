@@ -1,10 +1,6 @@
-﻿ 
+﻿using MeetingIntelli.DTO.Common;
 
-
-using MeetingIntelli.DTO.Common;
-
-namespace MeetingIntelli.Services.
-    Interface;
+namespace MeetingIntelli.Interface;
 
 public interface IMeetingAnalysisService
 {
