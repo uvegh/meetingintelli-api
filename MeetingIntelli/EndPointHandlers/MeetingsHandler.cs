@@ -3,6 +3,7 @@ using MeetingIntelli.Contracts;
 using MeetingIntelli.DTO.Requests;
 using MeetingIntelli.DTO.Responses;
 using MeetingIntelli.Interface;
+using MeetingIntelli.Services;
 
 namespace MeetingIntelli.EndPointHandlers;
 
@@ -11,15 +12,20 @@ public class MeetingsHandler : IMeetings
     private readonly AppDbContext _context;
     private readonly IMapper _mapper;
     private readonly ILogger<MeetingsHandler> _logger;
+    private readonly IClaudeService _claudeService;
+    private readonly IMeetingAnalysisService _meetingAnalysisService;
 
     public MeetingsHandler(
         AppDbContext context,
         IMapper mapper,
+        IClaudeService claudeService,
+        IMeetingAnalysisService meetingAnalysisService,
         ILogger<MeetingsHandler> logger)
     {
         _context = context;
         _mapper = mapper;
         _logger = logger;
+        _claudeService = claudeService;
     }
 
     public async Task<IResult> GetAllMeetings(
@@ -262,5 +268,43 @@ public class MeetingsHandler : IMeetings
                 title: "Failed to generate PDF"
             );
         }
+    }
+
+
+    public async Task<IResult> CreateMeetingAsync(
+    CreateMeetingRequest request,
+    CancellationToken ct)
+    {
+        _logger.LogInformation("Creating new meeting: {Title}", request.Title);
+
+        // Analyze notes with Claude
+        var (Summary, actionItems) = await _meetingAnalysisService.AnalyzeMeetingAsync(
+            request.Notes,
+            request.Attendees);
+
+        var meeting = new Meeting
+        {
+            Title = request.Title,
+            MeetingDate = request.MeetingDate,
+            Attendees = request.Attendees,
+            Notes = request.Notes,
+            Summary = summary,
+            ActionItems = actionItems.Select(a => new ActionItem
+            {
+                Assignee = a.Assignee,
+                Task = a.Task,
+                DueDate = a.DueDate,
+                Priority = a.Priority
+            }).ToList()
+        };
+
+        _context.Meetings.Add(meeting);
+        await _context.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Meeting created with ID: {Id}", meeting.Id);
+
+        return Results.Ok(ApiResponse<Meeting>.Success(
+            meeting,
+            "Meeting created successfully"));
     }
 }
