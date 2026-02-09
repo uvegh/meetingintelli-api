@@ -2,7 +2,6 @@
 using MeetingIntelli.Contracts;
 using MeetingIntelli.Data;
 using MeetingIntelli.EndPointHandlers;
-using MeetingIntelli.Interface;
 using MeetingIntelli.Services;
 
 

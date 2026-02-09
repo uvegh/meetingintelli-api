@@ -9,41 +9,40 @@ public class MapperConfig : Profile
 {
     public MapperConfig()
     {
-        // Meeting -> MeetingResponse (for GET operations)
-        CreateMap<Meeting, MeetingResponse>()
-            .ForMember(dest => dest.ActionItems,
-                opt => opt.MapFrom(src => DeserializeActionItems(src.ActionItemsJson)));
+        
+        CreateMap<Meeting, MeetingResponse>().ReverseMap();
 
-       
-        CreateMap<CreateMeetingRequest, Meeting>()
-            .ForMember(dest => dest.Id, opt => opt.Ignore()) // Auto-generated
-            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore()) // Set manually
-            .ForMember(dest => dest.Summary, opt => opt.Ignore()) // Comes from AI
-            .ForMember(dest => dest.ActionItemsJson, opt => opt.Ignore()); // Comes from AI
+        CreateMap<CreateMeetingRequest, Meeting>().ReverseMap();
 
-      
-        CreateMap<UpdateMeetingRequest, Meeting>()
-            .ForMember(dest => dest.Id, opt => opt.Ignore()) // Don't overwrite
-            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore()) // Don't overwrite
-            .ForMember(dest => dest.Summary, opt => opt.Ignore()) // Conditionally updated
-            .ForMember(dest => dest.ActionItemsJson, opt => opt.Ignore()); // Conditionally updated
+
+
+        CreateMap<UpdateMeetingRequest, Meeting>().ReverseMap();
+        CreateMap<ActionItem, ActionItemResponse>();
+
+
+        //CreateMap<Meeting, MeetingResponse>()
+        //    .ForMember(dest => dest.ActionItems, opt => opt.MapFrom(src => src.ActionItems));
+
+
+        CreateMap<ActionItem, ActionItemResponse>();
+
+
+        //CreateMap<CreateMeetingRequest, Meeting>()
+        //    .ForMember(dest => dest.Id, opt => opt.Ignore())
+        //    .ForMember(dest => dest.Summary, opt => opt.Ignore())
+        //    .ForMember(dest => dest.ActionItems, opt => opt.Ignore())
+        //    .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+        //    .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());
+
+
+        //CreateMap<UpdateMeetingRequest, Meeting>()
+        //    .ForMember(dest => dest.Id, opt => opt.Ignore())
+        //    .ForMember(dest => dest.Summary, opt => opt.Ignore())
+        //    .ForMember(dest => dest.ActionItems, opt => opt.Ignore())
+        //    .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+        //    .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());
+
     }
 
-    private static List<ActionItemResponse>? DeserializeActionItems(string? json)
-    {
-        if (string.IsNullOrEmpty(json))
-            return null;
 
-        try
-        {
-            return JsonSerializer.Deserialize<List<ActionItemResponse>>(
-                json,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            );
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
 }

@@ -29,7 +29,7 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 builder.Services.AddCorsPolicy();
-// Register browser pool as singleton (one instance for the entire app)
+// Register browser pool as singleton since expensive (one instance for the entire app)
 builder.Services.AddSingleton<IBrowserPool, BrowserPool>();
 var app = builder.Build();
 

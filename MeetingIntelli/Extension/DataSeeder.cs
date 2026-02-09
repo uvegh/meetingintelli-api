@@ -1,6 +1,5 @@
 ﻿
 
-
 namespace MeetingIntelli.Extension;
 
 public static class DatabaseSeeder
@@ -13,10 +12,8 @@ public static class DatabaseSeeder
 
         try
         {
-            // Ensure database is created
             await context.Database.MigrateAsync();
 
-            // Check if data already exists
             if (await context.Meetings.AnyAsync())
             {
                 logger.LogInformation("Database already contains data, skipping seed");
@@ -38,13 +35,13 @@ John will prepare the financial forecast by end of week. Mike raised concerns ab
 Action: Sarah to send proposal to clients by Friday. John to call major clients next Tuesday. 
 Mike to hire 2 new developers by end of month.",
                     Summary = "Team discussed Q1 targets with focus on 20% revenue increase. Key staffing concerns raised.",
-                    ActionItemsJson = JsonSerializer.Serialize(new[]
+                    CreatedAt = DateTime.UtcNow.AddDays(-30),
+                    ActionItems = new List<ActionItem>
                     {
-                        new { Assignee = "Sarah Johnson", Task = "Send proposal to clients", DueDate = "2024-01-19", Priority = "High" },
-                        new { Assignee = "John Smith", Task = "Call major clients", DueDate = "2024-01-23", Priority = "Medium" },
-                        new { Assignee = "Mike Chen", Task = "Hire 2 new developers", DueDate = "2024-01-31", Priority = "High" }
-                    }),
-                    CreatedAt = DateTime.UtcNow.AddDays(-30)
+                        new() { Assignee = "Sarah Johnson", Task = "Send proposal to clients", DueDate = new DateTime(2024, 1, 19), Priority = "High" },
+                        new() { Assignee = "John Smith", Task = "Call major clients", DueDate = new DateTime(2024, 1, 23), Priority = "Medium" },
+                        new() { Assignee = "Mike Chen", Task = "Hire 2 new developers", DueDate = new DateTime(2024, 1, 31), Priority = "High" }
+                    }
                 },
 
                 new Meeting
@@ -58,13 +55,13 @@ David suggested we prioritize mobile app improvements. Emma agreed to conduct us
 Decision: Move AI features to Q2. Alice to create detailed specs. David to estimate development time.
 Emma to present research findings at next meeting.",
                     Summary = "Reviewed 6-month product roadmap. AI features moved to Q2, mobile app prioritized.",
-                    ActionItemsJson = JsonSerializer.Serialize(new[]
+                    CreatedAt = DateTime.UtcNow.AddDays(-23),
+                    ActionItems = new List<ActionItem>
                     {
-                        new { Assignee = "Alice Brown", Task = "Create detailed feature specs", DueDate = "2024-01-29", Priority = "High" },
-                        new { Assignee = "David Lee", Task = "Estimate development time for mobile improvements", DueDate = "2024-02-05", Priority = "Medium" },
-                        new { Assignee = "Emma Wilson", Task = "Conduct user research and present findings", DueDate = "2024-02-12", Priority = "Medium" }
-                    }),
-                    CreatedAt = DateTime.UtcNow.AddDays(-23)
+                        new() { Assignee = "Alice Brown", Task = "Create detailed feature specs", DueDate = new DateTime(2024, 1, 29), Priority = "High" },
+                        new() { Assignee = "David Lee", Task = "Estimate development time for mobile improvements", DueDate = new DateTime(2024, 2, 5), Priority = "Medium" },
+                        new() { Assignee = "Emma Wilson", Task = "Conduct user research and present findings", DueDate = new DateTime(2024, 2, 12), Priority = "Medium" }
+                    }
                 },
 
                 new Meeting
@@ -78,13 +75,13 @@ Tom outlined remediation plan. Lisa to patch vulnerabilities ASAP. Kevin to upda
 Timeline: All critical issues must be resolved by end of week. Tom to report to management.
 Next audit scheduled for March.",
                     Summary = "Security audit revealed critical authentication vulnerabilities requiring immediate remediation.",
-                    ActionItemsJson = JsonSerializer.Serialize(new[]
+                    CreatedAt = DateTime.UtcNow.AddDays(-16),
+                    ActionItems = new List<ActionItem>
                     {
-                        new { Assignee = "Lisa Martinez", Task = "Patch authentication vulnerabilities", DueDate = "2024-02-02", Priority = "High" },
-                        new { Assignee = "Kevin Park", Task = "Update security documentation", DueDate = "2024-02-05", Priority = "Medium" },
-                        new { Assignee = "Tom Anderson", Task = "Report findings to management", DueDate = "2024-02-01", Priority = "High" }
-                    }),
-                    CreatedAt = DateTime.UtcNow.AddDays(-16)
+                        new() { Assignee = "Lisa Martinez", Task = "Patch authentication vulnerabilities", DueDate = new DateTime(2024, 2, 2), Priority = "High" },
+                        new() { Assignee = "Kevin Park", Task = "Update security documentation", DueDate = new DateTime(2024, 2, 5), Priority = "Medium" },
+                        new() { Assignee = "Tom Anderson", Task = "Report findings to management", DueDate = new DateTime(2024, 2, 1), Priority = "High" }
+                    }
                 },
 
                 new Meeting
@@ -98,13 +95,13 @@ Main complaints: slow loading times, confusing navigation. Rachel to prioritize 
 Mark to redesign navigation. Nina to follow up with unhappy customers.
 Positive feedback: Great customer support, useful features. Keep investing in support team.",
                     Summary = "Customer satisfaction at 4.2/5. Main issues: performance and navigation. Positive feedback on support.",
-                    ActionItemsJson = JsonSerializer.Serialize(new[]
+                    CreatedAt = DateTime.UtcNow.AddDays(-12),
+                    ActionItems = new List<ActionItem>
                     {
-                        new { Assignee = "Rachel Green", Task = "Prioritize performance improvements", DueDate = "2024-02-09", Priority = "High" },
-                        new { Assignee = "Mark Taylor", Task = "Redesign navigation interface", DueDate = "2024-02-16", Priority = "Medium" },
-                        new { Assignee = "Nina Patel", Task = "Follow up with unhappy customers", DueDate = "2024-02-06", Priority = "High" }
-                    }),
-                    CreatedAt = DateTime.UtcNow.AddDays(-12)
+                        new() { Assignee = "Rachel Green", Task = "Prioritize performance improvements", DueDate = new DateTime(2024, 2, 9), Priority = "High" },
+                        new() { Assignee = "Mark Taylor", Task = "Redesign navigation interface", DueDate = new DateTime(2024, 2, 16), Priority = "Medium" },
+                        new() { Assignee = "Nina Patel", Task = "Follow up with unhappy customers", DueDate = new DateTime(2024, 2, 6), Priority = "High" }
+                    }
                 },
 
                 new Meeting
@@ -118,20 +115,22 @@ What didn't go well: Too many meetings, unclear requirements. Action items: Redu
 Product team to provide clearer specs. Engineering to push back on unclear requirements.
 Next retrospective: First Friday of March.",
                     Summary = "Team retrospective identified meeting overload and unclear requirements as main pain points.",
-                    ActionItemsJson = JsonSerializer.Serialize(new[]
+                    CreatedAt = DateTime.UtcNow.AddDays(-9),
+                    ActionItems = new List<ActionItem>
                     {
-                        new { Assignee = "All Team Members", Task = "Reduce meeting frequency and duration", DueDate = (string?)null, Priority = "Low" },
-                        new { Assignee = "Product Team", Task = "Provide clearer requirement specifications", DueDate = (string?)null, Priority = "Medium" },
-                        new { Assignee = "Engineering Team", Task = "Push back on unclear requirements", DueDate = (string?)null, Priority = "Low" }
-                    }),
-                    CreatedAt = DateTime.UtcNow.AddDays(-9)
+                        new() { Assignee = "All Team Members", Task = "Reduce meeting frequency and duration", DueDate = null, Priority = "Low" },
+                        new() { Assignee = "Product Team", Task = "Provide clearer requirement specifications", DueDate = null, Priority = "Medium" },
+                        new() { Assignee = "Engineering Team", Task = "Push back on unclear requirements", DueDate = null, Priority = "Low" }
+                    }
                 }
             };
 
             context.Meetings.AddRange(meetings);
             await context.SaveChangesAsync();
 
-            logger.LogInformation("Successfully seeded {Count} meetings", meetings.Length);
+            logger.LogInformation("Successfully seeded {MeetingCount} meetings with {ActionItemCount} action items",
+                meetings.Length,
+                meetings.Sum(m => m.ActionItems.Count));
         }
         catch (Exception ex)
         {

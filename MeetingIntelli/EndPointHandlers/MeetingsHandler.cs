@@ -1,9 +1,10 @@
 ﻿using AutoMapper;
 using MeetingIntelli.Contracts;
+
 using MeetingIntelli.DTO.Requests;
 using MeetingIntelli.DTO.Responses;
-using MeetingIntelli.Interface;
-using MeetingIntelli.Services;
+
+using Microsoft.EntityFrameworkCore;
 
 namespace MeetingIntelli.EndPointHandlers;
 
@@ -12,28 +13,26 @@ public class MeetingsHandler : IMeetings
     private readonly AppDbContext _context;
     private readonly IMapper _mapper;
     private readonly ILogger<MeetingsHandler> _logger;
-    private readonly IClaudeService _claudeService;
     private readonly IMeetingAnalysisService _meetingAnalysisService;
 
     public MeetingsHandler(
         AppDbContext context,
         IMapper mapper,
-        IClaudeService claudeService,
         IMeetingAnalysisService meetingAnalysisService,
         ILogger<MeetingsHandler> logger)
     {
-        _context = context;
-        _mapper = mapper;
-        _logger = logger;
-        _claudeService = claudeService;
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+        _meetingAnalysisService = meetingAnalysisService ?? throw new ArgumentNullException(nameof(meetingAnalysisService));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<IResult> GetAllMeetings(
-        CancellationToken cancellationToken)
+    public async Task<IResult> GetAllMeetings(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Fetching all meetings");
 
         var meetings = await _context.Meetings
+            .Include(m => m.ActionItems) // ← Load action items
             .OrderByDescending(m => m.MeetingDate)
             .ToListAsync(cancellationToken);
 
@@ -42,18 +41,18 @@ public class MeetingsHandler : IMeetings
         return Results.Ok(ApiResponse<List<MeetingResponse>>.SuccessResponse(response));
     }
 
-    public async Task<IResult> GetMeetingById(
-        Guid id,
-        CancellationToken cancellationToken)
+    public async Task<IResult> GetMeetingById(Guid id, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Fetching meeting {MeetingId}", id);
 
-        var meeting = await _context.Meetings.FindAsync(new object[] { id }, cancellationToken);
+        var meeting = await _context.Meetings
+            .Include(m => m.ActionItems) // ← Load action items
+            .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
 
         if (meeting == null)
         {
             _logger.LogWarning("Meeting {MeetingId} not found", id);
-            return Results.NotFound(ApiResponse<object>.ErrorResponse($"Meeting {id} not found",null));
+            return Results.NotFound(ApiResponse<object>.ErrorResponse($"Meeting {id} not found", null));
         }
 
         var response = _mapper.Map<MeetingResponse>(meeting);
@@ -61,107 +60,135 @@ public class MeetingsHandler : IMeetings
         return Results.Ok(ApiResponse<MeetingResponse>.SuccessResponse(response));
     }
 
-    public async Task<IResult> CreateMeeting(
+    public async Task<IResult> CreateMeetingAsync(
         CreateMeetingRequest request,
-        IMeetingAnalysisService analysisService,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Creating new meeting: {Title}", request.Title);
 
         try
         {
-            // Analyze meeting with AI
-            var analysis = await analysisService.AnalyzeMeetingAsync(
+            // Analyze notes with Claude AI
+            var analysis = await _meetingAnalysisService.AnalyzeMeetingAsync(
                 request.Notes,
                 request.Attendees,
-                cancellationToken
-            );
+                cancellationToken);
 
-            // Map DTO to entity
-            var meeting = _mapper.Map<Meeting>(request);
-            meeting.Summary = analysis.Summary;
-            meeting.ActionItemsJson = JsonSerializer.Serialize(analysis.ActionItems);
-            meeting.CreatedAt = DateTime.UtcNow;
+            _logger.LogDebug("Claude analysis complete. Summary length: {Length}, Action items: {Count}",
+                analysis.Summary?.Length ?? 0,
+                analysis.ActionItems?.Count ?? 0);
+
+            // Create meeting entity
+            var meeting = new Meeting
+            {
+                Title = request.Title,
+                MeetingDate = request.MeetingDate,
+                Attendees = request.Attendees,
+                Notes = request.Notes,
+                Summary = analysis.Summary,
+                ActionItems = analysis.ActionItems?.Select(dto => new ActionItem
+                {
+                    Assignee = dto.Assignee,
+                    Task = dto.Task,
+                    DueDate = dto.DueDate,
+                    Priority = dto.Priority
+                }).ToList() ?? new List<ActionItem>()
+            };
 
             _context.Meetings.Add(meeting);
             await _context.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("Successfully created meeting {MeetingId}", meeting.Id);
+            _logger.LogInformation("Meeting created with ID: {Id}, Action items: {Count}",
+                meeting.Id,
+                meeting.ActionItems.Count);
 
+            // Map to response
             var response = _mapper.Map<MeetingResponse>(meeting);
 
             return Results.CreatedAtRoute(
                 "GetMeetingById",
                 new { id = meeting.Id },
-                ApiResponse<MeetingResponse>.SuccessResponse(response, "Meeting created successfully")
-            );
+                ApiResponse<MeetingResponse>.SuccessResponse(response, "Meeting created successfully"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating meeting");
             return Results.BadRequest(ApiResponse<object>.ErrorResponse(
                 "Failed to create meeting",
-                new List<string> { ex.Message }
-            ));
+                new List<string> { ex.Message }));
         }
     }
 
     public async Task<IResult> UpdateMeeting(
         Guid id,
         UpdateMeetingRequest request,
-        IMeetingAnalysisService analysisService,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Updating meeting {MeetingId}", id);
 
-        var meeting = await _context.Meetings.FindAsync(new object[] { id }, cancellationToken);
+        var meeting = await _context.Meetings
+            .Include(m => m.ActionItems) // ← Load action items
+            .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
 
         if (meeting == null)
         {
             _logger.LogWarning("Meeting {MeetingId} not found for update", id);
-            return Results.NotFound(ApiResponse<object>.ErrorResponse($"Meeting {id} not found",null));
+            return Results.NotFound(ApiResponse<object>.ErrorResponse($"Meeting {id} not found", null));
         }
 
         try
         {
             var notesChanged = meeting.Notes != request.Notes;
 
-            // Map request to existing entity
-            _mapper.Map(request, meeting);
+            // Update basic fields
+            meeting.Title = request.Title;
+            meeting.MeetingDate = request.MeetingDate;
+            meeting.Attendees = request.Attendees;
+            meeting.Notes = request.Notes;
+            meeting.UpdatedAt = DateTime.UtcNow;
 
             if (notesChanged)
             {
                 _logger.LogInformation("Notes changed, re-analyzing meeting {MeetingId}", id);
 
-                var analysis = await analysisService.AnalyzeMeetingAsync(
+                var analysis = await _meetingAnalysisService.AnalyzeMeetingAsync(
                     request.Notes,
                     request.Attendees,
-                    cancellationToken
-                );
+                    cancellationToken);
 
                 meeting.Summary = analysis.Summary;
-                meeting.ActionItemsJson = JsonSerializer.Serialize(analysis.ActionItems);
+
+                // Remove old action items
+                //_context.ActionItems.RemoveRange(meeting.ActionItems);
+
+                // Add new action items
+                meeting.ActionItems = analysis.ActionItems?.Select(dto => new ActionItem
+                {
+                    MeetingId = meeting.Id,
+                    Assignee = dto.Assignee,
+                    Task = dto.Task,
+                    DueDate = dto.DueDate,
+                    Priority = dto.Priority
+                }).ToList() ?? new List<ActionItem>();
             }
 
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Successfully updated meeting {MeetingId}", id);
 
-            return Results.NoContent();
+            var response = _mapper.Map<MeetingResponse>(meeting);
+            return Results.Ok(ApiResponse<MeetingResponse>.SuccessResponse(response));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating meeting {MeetingId}", id);
             return Results.BadRequest(ApiResponse<object>.ErrorResponse(
                 "Failed to update meeting",
-                new List<string> { ex.Message }
-            ));
+                new List<string> { ex.Message }));
         }
     }
 
-    public async Task<IResult> DeleteMeeting(
-        Guid id,
-        CancellationToken cancellationToken)
+    public async Task<IResult> DeleteMeeting(Guid id, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Deleting meeting {MeetingId}", id);
 
@@ -170,7 +197,7 @@ public class MeetingsHandler : IMeetings
         if (meeting == null)
         {
             _logger.LogWarning("Meeting {MeetingId} not found for deletion", id);
-            return Results.NotFound(ApiResponse<object>.ErrorResponse($"Meeting {id} not found",null));
+            return Results.NotFound(ApiResponse<object>.ErrorResponse($"Meeting {id} not found", null));
         }
 
         _context.Meetings.Remove(meeting);
@@ -181,8 +208,7 @@ public class MeetingsHandler : IMeetings
         return Results.NoContent();
     }
 
-    public async Task<IResult> GetStatistics(
-        CancellationToken cancellationToken)
+    public async Task<IResult> GetStatistics(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Fetching meeting statistics");
 
@@ -216,8 +242,7 @@ public class MeetingsHandler : IMeetings
         {
             var pdf = await pdfService.GeneratePdfFromUrlAsync(
                 "/meetings?print=true",
-                cancellationToken
-            );
+                cancellationToken);
 
             var filename = $"meetings-overview-{DateTime.UtcNow:yyyy-MM-dd}.pdf";
 
@@ -229,8 +254,7 @@ public class MeetingsHandler : IMeetings
             return Results.Problem(
                 detail: ex.Message,
                 statusCode: StatusCodes.Status500InternalServerError,
-                title: "Failed to generate PDF"
-            );
+                title: "Failed to generate PDF");
         }
     }
 
@@ -242,18 +266,18 @@ public class MeetingsHandler : IMeetings
         _logger.LogInformation("Generating PDF for meeting {MeetingId}", id);
 
         var meeting = await _context.Meetings.FindAsync(new object[] { id }, cancellationToken);
+
         if (meeting == null)
         {
             _logger.LogWarning("Meeting {MeetingId} not found for PDF generation", id);
-            return Results.NotFound(ApiResponse<object>.ErrorResponse($"Meeting {id} not found",null));
+            return Results.NotFound(ApiResponse<object>.ErrorResponse($"Meeting {id} not found", null));
         }
 
         try
         {
             var pdf = await pdfService.GeneratePdfFromUrlAsync(
                 $"/meetings/{id}?print=true",
-                cancellationToken
-            );
+                cancellationToken);
 
             var filename = $"meeting-{meeting.Title.Replace(" ", "-")}-{DateTime.UtcNow:yyyy-MM-dd}.pdf";
 
@@ -265,46 +289,7 @@ public class MeetingsHandler : IMeetings
             return Results.Problem(
                 detail: ex.Message,
                 statusCode: StatusCodes.Status500InternalServerError,
-                title: "Failed to generate PDF"
-            );
+                title: "Failed to generate PDF");
         }
-    }
-
-
-    public async Task<IResult> CreateMeetingAsync(
-    CreateMeetingRequest request,
-    CancellationToken ct)
-    {
-        _logger.LogInformation("Creating new meeting: {Title}", request.Title);
-
-        // Analyze notes with Claude
-        var (Summary, actionItems) = await _meetingAnalysisService.AnalyzeMeetingAsync(
-            request.Notes,
-            request.Attendees);
-
-        var meeting = new Meeting
-        {
-            Title = request.Title,
-            MeetingDate = request.MeetingDate,
-            Attendees = request.Attendees,
-            Notes = request.Notes,
-            Summary = summary,
-            ActionItems = actionItems.Select(a => new ActionItem
-            {
-                Assignee = a.Assignee,
-                Task = a.Task,
-                DueDate = a.DueDate,
-                Priority = a.Priority
-            }).ToList()
-        };
-
-        _context.Meetings.Add(meeting);
-        await _context.SaveChangesAsync(ct);
-
-        _logger.LogInformation("Meeting created with ID: {Id}", meeting.Id);
-
-        return Results.Ok(ApiResponse<Meeting>.Success(
-            meeting,
-            "Meeting created successfully"));
     }
 }

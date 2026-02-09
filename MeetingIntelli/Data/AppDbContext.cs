@@ -17,6 +17,7 @@ public class AppDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.ApplyConfiguration(new MeetingConfiguration());
+        modelBuilder.ApplyConfiguration(new ActionItemConfiguration());
     }
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
