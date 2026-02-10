@@ -3,6 +3,11 @@
 public interface IPdfService
 {
 
+    Task<byte[]> GeneratePdfFromUrlAsync(
+       string urlPath,
+       int? viewportWidth = null,
+       int? viewportHeight = null,
+       CancellationToken cancellationToken = default);
+   
 
-    Task<byte[]> GeneratePdfFromUrlAsync(string urlPath, CancellationToken ct = default);
 }

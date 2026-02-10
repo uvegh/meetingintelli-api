@@ -46,7 +46,7 @@ public class MeetingsHandler : IMeetings
         _logger.LogInformation("Fetching meeting {MeetingId}", id);
 
         var meeting = await _context.Meetings
-            .Include(m => m.ActionItems) // ← Load action items
+            .Include(m => m.ActionItems) 
             .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
 
         if (meeting == null)
@@ -119,15 +119,105 @@ public class MeetingsHandler : IMeetings
         }
     }
 
+
+
+
+    //public async Task<IResult> UpdateMeeting(
+    //Guid id,
+    //UpdateMeetingRequest request,
+    //CancellationToken cancellationToken)
+    //{
+    //    _logger.LogInformation("Updating meeting {MeetingId}", id);
+
+    //    var meeting = await _context.Meetings
+    //        .Include(m => m.ActionItems)
+    //        .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
+
+    //    if (meeting == null)
+    //    {
+    //        _logger.LogWarning("Meeting {MeetingId} not found for update", id);
+    //        return Results.NotFound(ApiResponse<object>.ErrorResponse($"Meeting {id} not found", null));
+    //    }
+
+    //    try
+    //    {
+    //        var notesChanged = meeting.Notes != request.Notes;
+
+    //        // Update basic fields
+    //        meeting.Title = request.Title;
+    //        meeting.MeetingDate = request.MeetingDate;
+    //        meeting.Attendees = request.Attendees;
+    //        meeting.Notes = request.Notes;
+    //        meeting.UpdatedAt = DateTime.UtcNow;
+
+    //        if (notesChanged)
+    //        {
+    //            _logger.LogInformation("Notes changed, re-analyzing meeting {MeetingId}", id);
+
+    //            var analysis = await _meetingAnalysisService.AnalyzeMeetingAsync(
+    //                request.Notes,
+    //                request.Attendees,
+    //                cancellationToken);
+
+    //            meeting.Summary = analysis.Summary;
+
+
+    //            var existingActionItems = meeting.ActionItems.ToList();
+    //            foreach (var item in existingActionItems)
+    //            {
+    //                _context.ActionItems.Remove(item);
+    //            }
+
+    //            // Clear action collection
+    //            meeting.ActionItems.Clear();
+
+    //            // Add new action items
+    //            if (analysis.ActionItems != null && analysis.ActionItems.Any())
+    //            {
+    //                foreach (var dto in analysis.ActionItems)
+    //                {
+    //                    meeting.ActionItems.Add(new ActionItem
+    //                    {
+
+    //                        MeetingId = meeting.Id,
+    //                        Assignee = dto.Assignee,
+    //                        Task = dto.Task,
+    //                        DueDate = dto.DueDate,
+    //                        Priority = dto.Priority
+    //                    });
+    //                }
+    //            }
+    //        }
+
+    //        await _context.SaveChangesAsync(cancellationToken);
+
+    //        _logger.LogInformation("Successfully updated meeting {MeetingId}", id);
+
+    //        // Reload to get the new action items with their IDs
+    //        await _context.Entry(meeting)
+    //            .Collection(m => m.ActionItems)
+    //            .LoadAsync(cancellationToken);
+
+    //        var response = _mapper.Map<MeetingResponse>(meeting);
+    //        return Results.Ok(ApiResponse<MeetingResponse>.SuccessResponse(response));
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        _logger.LogError(ex, "Error updating meeting {MeetingId}", id);
+    //        return Results.BadRequest(ApiResponse<object>.ErrorResponse(
+    //            "Failed to update meeting",
+    //            new List<string> { ex.Message }));
+    //    }
+    //}
+
     public async Task<IResult> UpdateMeeting(
-        Guid id,
-        UpdateMeetingRequest request,
-        CancellationToken cancellationToken)
+    Guid id,
+    UpdateMeetingRequest request,
+    CancellationToken cancellationToken)
     {
         _logger.LogInformation("Updating meeting {MeetingId}", id);
 
         var meeting = await _context.Meetings
-            .Include(m => m.ActionItems) // ← Load action items
             .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
 
         if (meeting == null)
@@ -158,25 +248,37 @@ public class MeetingsHandler : IMeetings
 
                 meeting.Summary = analysis.Summary;
 
-                // Remove old action items
-                //_context.ActionItems.RemoveRange(meeting.ActionItems);
+            
+                await _context.Database.ExecuteSqlInterpolatedAsync(
+                    $"DELETE FROM action_items WHERE meeting_id = {id}",
+                    cancellationToken);
 
-                // Add new action items
-                meeting.ActionItems = analysis.ActionItems?.Select(dto => new ActionItem
+               
+                if (analysis.ActionItems != null && analysis.ActionItems.Any())
                 {
-                    MeetingId = meeting.Id,
-                    Assignee = dto.Assignee,
-                    Task = dto.Task,
-                    DueDate = dto.DueDate,
-                    Priority = dto.Priority
-                }).ToList() ?? new List<ActionItem>();
+                    var newActionItems = analysis.ActionItems.Select(dto => new ActionItem
+                    {
+                        MeetingId = meeting.Id,
+                        Assignee = dto.Assignee,
+                        Task = dto.Task,
+                        DueDate = dto.DueDate,
+                        Priority = dto.Priority
+                    }).ToList();
+
+                    _context.ActionItems.AddRange(newActionItems);
+                }
             }
 
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Successfully updated meeting {MeetingId}", id);
 
-            var response = _mapper.Map<MeetingResponse>(meeting);
+            // Reload with action items
+            var updatedMeeting = await _context.Meetings
+                .Include(m => m.ActionItems)
+                .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
+
+            var response = _mapper.Map<MeetingResponse>(updatedMeeting);
             return Results.Ok(ApiResponse<MeetingResponse>.SuccessResponse(response));
         }
         catch (Exception ex)
@@ -232,16 +334,82 @@ public class MeetingsHandler : IMeetings
         return Results.Ok(ApiResponse<MeetingStatisticsResponse>.SuccessResponse(statistics));
     }
 
+    //public async Task<IResult> GenerateListPdf(
+    //    IPdfService pdfService,
+    //    CancellationToken cancellationToken)
+    //{
+    //    _logger.LogInformation("Generating PDF for meetings list");
+
+    //    try
+    //    {
+    //        var pdf = await pdfService.GeneratePdfFromUrlAsync(
+    //            "/meetings?print=true",
+    //            cancellationToken);
+
+    //        var filename = $"meetings-overview-{DateTime.UtcNow:yyyy-MM-dd}.pdf";
+
+    //        return Results.File(pdf, "application/pdf", filename);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        _logger.LogError(ex, "Failed to generate list PDF");
+    //        return Results.Problem(
+    //            detail: ex.Message,
+    //            statusCode: StatusCodes.Status500InternalServerError,
+    //            title: "Failed to generate PDF");
+    //    }
+    //}
+
+    //public async Task<IResult> GenerateMeetingPdf(
+    //    Guid id,
+    //    IPdfService pdfService,
+    //    CancellationToken cancellationToken)
+    //{
+    //    _logger.LogInformation("Generating PDF for meeting {MeetingId}", id);
+
+    //    var meeting = await _context.Meetings.FindAsync(new object[] { id }, cancellationToken);
+
+    //    if (meeting == null)
+    //    {
+    //        _logger.LogWarning("Meeting {MeetingId} not found for PDF generation", id);
+    //        return Results.NotFound(ApiResponse<object>.ErrorResponse($"Meeting {id} not found", null));
+    //    }
+
+    //    try
+    //    {
+    //        var pdf = await pdfService.GeneratePdfFromUrlAsync(
+    //            $"/meetings/{id}?print=true",
+    //            cancellationToken);
+
+    //        var filename = $"meeting-{meeting.Title.Replace(" ", "-")}-{DateTime.UtcNow:yyyy-MM-dd}.pdf";
+
+    //        return Results.File(pdf, "application/pdf", filename);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        _logger.LogError(ex, "Failed to generate PDF for meeting {MeetingId}", id);
+    //        return Results.Problem(
+    //            detail: ex.Message,
+    //            statusCode: StatusCodes.Status500InternalServerError,
+    //            title: "Failed to generate PDF");
+    //    }
+    //}
+
     public async Task<IResult> GenerateListPdf(
-        IPdfService pdfService,
-        CancellationToken cancellationToken)
+    IPdfService pdfService,
+    int? viewportWidth,
+    int? viewportHeight,
+    CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Generating PDF for meetings list");
+        _logger.LogInformation("Generating PDF for meetings list with viewport {Width}x{Height}",
+            viewportWidth ?? 1920, viewportHeight ?? 1080);
 
         try
         {
             var pdf = await pdfService.GeneratePdfFromUrlAsync(
                 "/meetings?print=true",
+                viewportWidth,
+                viewportHeight,
                 cancellationToken);
 
             var filename = $"meetings-overview-{DateTime.UtcNow:yyyy-MM-dd}.pdf";
@@ -261,9 +429,12 @@ public class MeetingsHandler : IMeetings
     public async Task<IResult> GenerateMeetingPdf(
         Guid id,
         IPdfService pdfService,
+        int? viewportWidth,
+        int? viewportHeight,
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Generating PDF for meeting {MeetingId}", id);
+        _logger.LogInformation("Generating PDF for meeting {MeetingId} with viewport {Width}x{Height}",
+            id, viewportWidth ?? 1920, viewportHeight ?? 1080);
 
         var meeting = await _context.Meetings.FindAsync(new object[] { id }, cancellationToken);
 
@@ -277,6 +448,8 @@ public class MeetingsHandler : IMeetings
         {
             var pdf = await pdfService.GeneratePdfFromUrlAsync(
                 $"/meetings/{id}?print=true",
+                viewportWidth,
+                viewportHeight,
                 cancellationToken);
 
             var filename = $"meeting-{meeting.Title.Replace(" ", "-")}-{DateTime.UtcNow:yyyy-MM-dd}.pdf";

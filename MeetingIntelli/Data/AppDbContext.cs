@@ -11,7 +11,7 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<Meeting> Meetings => Set<Meeting>();
-
+    public DbSet<ActionItem> ActionItems => Set<ActionItem>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

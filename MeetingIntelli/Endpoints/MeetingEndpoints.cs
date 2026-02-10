@@ -68,24 +68,44 @@ group.MapGet("/{id:guid}", async (
             .Produces<ApiResponse<MeetingStatisticsResponse>>(StatusCodes.Status200OK);
 
         // POST /api/meetings/pdf/list
+        //   group.MapPost("/pdf/list", async (
+        //       IMeetings handler,
+        //       IPdfService pdfService,
+        //       CancellationToken ct) => await handler.GenerateListPdf(pdfService, ct))
+        //       .WithName("GenerateListPdf")
+        //       .Produces<FileContentResult>(StatusCodes.Status200OK)
+        //       .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+        //   // POST /api/meetings/{id}/pdf
+        //group.MapPost("/{id:guid}/pdf", async ( Guid id,
+        //       IMeetings handler,
+        //       IPdfService pdfService,
+        //       CancellationToken ct) => await handler.GenerateMeetingPdf(id, pdfService, ct))
+        //       .WithName("GenerateMeetingPdf")
+        //       .Produces<FileContentResult>(StatusCodes.Status200OK)
+        //       .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+        //       .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+
+
+
+        // POST /api/meetings/pdf/list
         group.MapPost("/pdf/list", async (
+            [FromBody] PdfGenerationRequest request,
             IMeetings handler,
             IPdfService pdfService,
-            CancellationToken ct) => await handler.GenerateListPdf(pdfService, ct))
+            CancellationToken ct) => await handler.GenerateListPdf(pdfService, request.ViewportWidth, request.ViewportHeight, ct))
             .WithName("GenerateListPdf")
-            .Produces<FileContentResult>(StatusCodes.Status200OK)
-            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
+            .Produces<FileContentResult>(StatusCodes.Status200OK);
 
         // POST /api/meetings/{id}/pdf
-     group.MapPost("/{id:guid}/pdf", async ( Guid id,
+    group.MapPost("/{id:guid}/pdf", async (
+            Guid id,
+            [FromBody] PdfGenerationRequest request,
             IMeetings handler,
             IPdfService pdfService,
-            CancellationToken ct) => await handler.GenerateMeetingPdf(id, pdfService, ct))
+            CancellationToken ct) => await handler.GenerateMeetingPdf(id, pdfService, request.ViewportWidth, request.ViewportHeight, ct))
             .WithName("GenerateMeetingPdf")
-            .Produces<FileContentResult>(StatusCodes.Status200OK)
-            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
-            .Produces<ProblemDetails>(StatusCodes.Status500InternalServerError);
-
+            .Produces<FileContentResult>(StatusCodes.Status200OK);
 
         group.MapPost("/test-ai", async (
     IMeetingAnalysisService analysisService,
