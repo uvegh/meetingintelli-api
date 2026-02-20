@@ -1,3 +1,4 @@
+using Hangfire;
 using MeetingIntelli.Endpoints;
 using MeetingIntelli.Extension;
 using MeetingIntelli.Services;
@@ -48,5 +49,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.UseCors("AllowFrontend");
+app.UseHangfireDashboard();
 app.MapMeetingEndpoints();
 app.Run();

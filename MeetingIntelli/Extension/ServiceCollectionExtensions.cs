@@ -1,8 +1,9 @@
-﻿using MeetingIntelli.Configurations;
+﻿using Hangfire;
+using MeetingIntelli.Configurations;
 using MeetingIntelli.Contracts;
-using MeetingIntelli.Data;
+
 using MeetingIntelli.EndPointHandlers;
-using MeetingIntelli.Services;
+using  MeetingIntelli.Services;
 
 
 
@@ -24,11 +25,13 @@ public static class ServiceCollectionExtensions
            ));
         services.AddScoped<IMeetings, MeetingsHandler>();
         services.AddAutoMapper(cfg => cfg.AddProfile<MapperConfig>());
-
-
+        services.AddHangfire(cfg => cfg.SetDataCompatibilityLevel(CompatibilityLevel.Version_180).UseSimpleAssemblyNameTypeSerializer().
+        UseRecommendedSerializerSettings().
+        UseSqlServerStorage(configurition.GetConnectionString("DefaultConnection")));
+        services.AddHangfireServer();
         services.AddHttpClient<IClaudeService, ClaudeService>();
 
-      
+        services.AddScoped<IBackgroundService, Services.BackgroundService >();
         services.AddScoped<IMeetingAnalysisService, MeetingAnalysisService>();
         services.AddScoped<IPdfService, PdfService>();
 

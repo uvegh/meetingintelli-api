@@ -1,8 +1,7 @@
 ﻿using MeetingIntelli.Contracts;
 using MeetingIntelli.DTO.Requests;
 using MeetingIntelli.DTO.Responses;
-using MeetingIntelli.Interface;
-using MeetingIntelli.Services;
+
 using Microsoft.AspNetCore.Mvc;
 
 namespace MeetingIntelli.Endpoints;
@@ -35,8 +34,17 @@ group.MapGet("/{id:guid}", async (
                group.MapPost("/", async (
             CreateMeetingRequest request,
             IMeetings handler,
-            CancellationToken ct) => await handler.CreateMeetingAsync(request, ct))
+            //ILogger logger,
+            IBackgroundService jobClient,
+            CancellationToken ct) =>
+               {
+                   //logger.LogDebug("Hangfire scheduled job for {request}", request);
+                   jobClient.EnqueueJob<IMeetings>(s => s.CreateMeetingAsync(request, ct));
+                   return Results.Accepted();
+                   //await handler.CreateMeetingAsync(request, ct);
+               })
             .WithName("CreateMeeting")
+
             .Produces<ApiResponse<MeetingResponse>>(StatusCodes.Status201Created)
             .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest);
 
