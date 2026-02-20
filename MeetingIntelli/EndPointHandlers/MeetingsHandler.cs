@@ -32,7 +32,7 @@ public class MeetingsHandler : IMeetings
         _logger.LogInformation("Fetching all meetings");
 
         var meetings = await _context.Meetings
-            .Include(m => m.ActionItems) // ← Load action items
+            .Include(m => m.ActionItems) // Load action items
             .OrderByDescending(m => m.MeetingDate)
             .ToListAsync(cancellationToken);
 
@@ -40,13 +40,11 @@ public class MeetingsHandler : IMeetings
 
         return Results.Ok(ApiResponse<List<MeetingResponse>>.SuccessResponse(response));
     }
-
-    public async Task<IResult> GetMeetingById(Guid id, CancellationToken cancellationToken)
+public async Task<IResult> GetMeetingById(Guid id, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Fetching meeting {MeetingId}", id);
 
-        var meeting = await _context.Meetings
-            .Include(m => m.ActionItems) 
+  var meeting = await _context.Meetings.Include(m => m.ActionItems) 
             .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
 
         if (meeting == null)
@@ -102,7 +100,7 @@ public class MeetingsHandler : IMeetings
                 meeting.Id,
                 meeting.ActionItems.Count);
 
-            // Map to response
+        
             var response = _mapper.Map<MeetingResponse>(meeting);
 
             return Results.CreatedAtRoute(
@@ -210,8 +208,7 @@ public class MeetingsHandler : IMeetings
     //    }
     //}
 
-    public async Task<IResult> UpdateMeeting(
-    Guid id,
+ public async Task<IResult> UpdateMeeting(Guid id,
     UpdateMeetingRequest request,
     CancellationToken cancellationToken)
     {
@@ -230,7 +227,7 @@ public class MeetingsHandler : IMeetings
         {
             var notesChanged = meeting.Notes != request.Notes;
 
-            // Update basic fields
+           
             meeting.Title = request.Title;
             meeting.MeetingDate = request.MeetingDate;
             meeting.Attendees = request.Attendees;
